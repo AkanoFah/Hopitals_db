@@ -3,7 +3,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
 <style>
-/* Layout: masthead, four-criteria band, then a step list (left) beside the SQL workbench (right). */
+/* Layout: masthead, then a step list (left) beside the SQL workbench (right). */
 :root {
   --bg: #f3f6fb;
   --surface: #ffffff;
@@ -91,16 +91,24 @@ h1 { margin: 0; font-family: var(--font-display); font-weight: 700; font-size: c
 .btn.primary:hover:not(:disabled) { background: var(--accent); filter: brightness(1.08); }
 .btn.small { padding: .25rem .65rem; font-size: .82rem; }
 
-/* four grading criteria */
-.criteria {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(15.5rem, 1fr)); gap: 1px;
-  background: var(--line); border: 1px solid var(--line); border-radius: .75rem; overflow: hidden;
+/* engine switcher + MySQL connection */
+.engine { display: flex; align-items: center; gap: .45rem; font-size: .85rem; color: var(--muted); }
+.engine select { padding: .38rem .6rem; }
+.pill {
+  font-size: .78rem; padding: .22rem .65rem; border: 1px solid var(--line); border-radius: 999px;
+  background: var(--surface); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap;
+  align-self: center;
 }
-.crit { background: var(--surface); padding: .95rem 1.1rem; display: flex; gap: .8rem; min-width: 0; }
-.crit-n { font-family: var(--font-display); font-weight: 700; color: var(--blue); font-size: 1.6rem; line-height: 1.1; }
-.crit h3 { margin: 0; font-size: .92rem; font-weight: 600; }
-.crit p { margin: .2rem 0 0; color: var(--muted); font-size: .85rem; overflow-wrap: anywhere; }
-.crit strong { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+.connbar { display: grid; gap: .6rem; padding: .85rem 1rem; border: 1px solid var(--line); border-radius: .75rem; background: var(--surface); }
+.connform { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: .6rem; align-items: end; }
+.connform label { display: grid; gap: .2rem; font-size: .78rem; color: var(--muted); font-weight: 500; min-width: 0; }
+.connform input {
+  font: inherit; font-size: .88rem; padding: .42rem .6rem; border-radius: .45rem; border: 1px solid var(--line);
+  background: var(--surface); color: var(--ink); min-width: 0; width: 100%;
+}
+.btn.danger { color: var(--bad); border-color: var(--bad); }
+.btn.danger:hover:not(:disabled) { background: var(--bad-soft); }
+.cardact { display: flex; flex-wrap: wrap; gap: .4rem; }
 
 /* layout */
 .layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.1rem; align-items: start; }
@@ -237,17 +245,30 @@ pre.code {
       <p class="lede">สคริปต์ SQL ของระบบฐานข้อมูลสำหรับการจัดการโรงพยาบาล สร้างตาราง ใส่ข้อมูลตัวอย่าง และทดสอบคำสั่งทีละขั้นได้ในหน้านี้</p>
     </div>
     <div class="mast-actions">
+      <label class="engine" for="engineSel"><span>เอนจิน</span>
+        <select id="engineSel">
+          <option value="sqlite">SQLite (ในเครื่อง)</option>
+          <option value="mysql">MySQL</option>
+        </select>
+      </label>
+      <span class="pill" id="engineInfo">กำลังเตรียมฐานข้อมูล…</span>
       <button class="btn primary" id="btnBuild" type="button" disabled>สร้างฐานข้อมูลครบชุด</button>
       <button class="btn" id="btnEmpty" type="button" disabled>เริ่มจากฐานข้อมูลว่าง</button>
     </div>
   </header>
 
-  <section class="criteria" aria-label="เกณฑ์การพิจารณา">
-    <div class="crit"><span class="crit-n">1</span><div><h3>การเลือกใช้ซอฟต์แวร์ที่เหมาะสม</h3><p id="c1">SQLite บนเครื่องของคุณผ่าน Python ไม่ต้องต่ออินเทอร์เน็ต ใช้ SQL มาตรฐานตามที่เรียนในวิชา</p></div></div>
-    <div class="crit"><span class="crit-n">2</span><div><h3>ขั้นตอนสร้างฐานข้อมูล (SQL-DDL)</h3><p id="c2">กำลังเตรียมฐานข้อมูล</p></div></div>
-    <div class="crit"><span class="crit-n">3</span><div><h3>ตัวอย่างข้อมูลที่เหมาะสม</h3><p id="c3">กำลังเตรียมฐานข้อมูล</p></div></div>
-    <div class="crit"><span class="crit-n">4</span><div><h3>ทดสอบด้วย SQL (DDL / DML)</h3><p id="c4"></p></div></div>
+  <section class="connbar" id="connbar" aria-label="เชื่อมต่อ MySQL" hidden>
+    <div class="connform">
+      <label>Host<input id="myHost" value="127.0.0.1" autocomplete="off" spellcheck="false"></label>
+      <label>Port<input id="myPort" value="3306" inputmode="numeric" autocomplete="off"></label>
+      <label>User<input id="myUser" value="root" autocomplete="off" spellcheck="false"></label>
+      <label>Password<input id="myPass" type="password" autocomplete="new-password"></label>
+      <label>ฐานข้อมูล<input id="myDb" value="hospital_db" autocomplete="off" spellcheck="false"></label>
+      <button class="btn primary" id="btnConnect" type="button" disabled>เชื่อมต่อ MySQL</button>
+    </div>
+    <p class="note" id="connMsg">ต้องมี MySQL 8.0.16 ขึ้นไปรันอยู่ และติดตั้งไดรเวอร์ด้วย <code>pip install pymysql</code> · ถ้ายังไม่มีฐานข้อมูลชื่อนี้ ระบบจะสร้างให้ · ปุ่ม “สร้างฐานข้อมูลครบชุด” และ “เริ่มจากฐานข้อมูลว่าง” จะลบตารางทั้งหมดในฐานข้อมูลนี้ก่อน จึงควรใช้ชื่อฐานข้อมูลที่ไม่มีข้อมูลสำคัญ</p>
   </section>
+
 
   <div class="layout">
     <nav class="steps" id="nav" aria-label="ขั้นตอนทั้งหมด"></nav>
@@ -273,6 +294,7 @@ pre.code {
           <button class="btn primary" id="btnRun" type="button" disabled>&#9654; รันคำสั่ง</button>
           <button class="btn" id="btnGroup" type="button" disabled>รันทั้งกลุ่ม</button>
           <button class="btn" id="btnReset" type="button">คืนค่าเดิม</button>
+          <button class="btn danger" id="btnDrop" type="button" hidden disabled></button>
           <button class="btn" id="btnCopy" type="button">คัดลอก</button>
           <span class="kbd">Ctrl + Enter เพื่อรัน</span>
           <span class="sp"></span>
@@ -283,7 +305,7 @@ pre.code {
       </section>
 
       <section class="panel" id="panel-schema" role="tabpanel" aria-labelledby="tab-schema" hidden>
-        <p class="note">โครงสร้างที่อ่านจากฐานข้อมูลที่กำลังใช้งานอยู่จริง กดปุ่ม “ดูข้อมูล” เพื่อเปิดข้อมูลในตารางนั้น</p>
+        <p class="note">โครงสร้างที่อ่านจากฐานข้อมูลที่กำลังใช้งานอยู่จริง กดปุ่ม “ดูข้อมูล” เพื่อเปิดข้อมูลในตารางนั้น หรือ “ลบ” เพื่อรีเซ็ตตารางนั้น (ตารางที่อ้างอิงอยู่จะถูกลบด้วย)</p>
         <div class="schema" id="schemaHost"></div>
       </section>
 
@@ -350,15 +372,18 @@ function analyze(sql) {
 }
 
 function hintFor(m) {
-  if (/already exists/i.test(m)) return 'มีตารางหรือออบเจกต์ชื่อนี้อยู่แล้ว กด “เริ่มจากฐานข้อมูลว่าง” เพื่อสร้างใหม่ตามลำดับ หรือ “สร้างฐานข้อมูลครบชุด” เพื่อรีเซ็ต';
-  if (/duplicate column/i.test(m)) return 'มีคอลัมน์นี้อยู่แล้ว (เคยรันขั้นตอนนี้ไปแล้ว) กด “สร้างฐานข้อมูลครบชุด” เพื่อรีเซ็ต';
-  if (/no such table|no such column/i.test(m)) return 'ยังไม่มีตารางหรือคอลัมน์นี้ ตรวจชื่อ หรือรันขั้นตอนสร้างตาราง (DDL) ตามลำดับก่อน';
-  if (/FOREIGN KEY constraint/i.test(m)) return 'ละเมิด Referential Integrity: ค่า Foreign Key ต้องมีอยู่จริงใน Primary Key ของตารางที่อ้างอิง และห้ามลบแถวที่ยังมีตารางอื่นอ้างถึง';
-  if (/NOT NULL constraint/i.test(m)) return 'ละเมิด Constraints on Null Values: คอลัมน์นี้กำหนดเป็น NOT NULL';
-  if (/UNIQUE constraint/i.test(m)) return 'ละเมิด Key Constraint: ค่า Primary Key หรือ UNIQUE ต้องไม่ซ้ำกัน';
-  if (/CHECK constraint/i.test(m)) return 'ละเมิด Domain Constraint: ค่าอยู่นอกเงื่อนไขที่กำหนดไว้ด้วย CHECK';
-  return '';
-}
+    if (/Cannot drop table|referenced by a foreign key/i.test(m)) return 'ตารางนี้ถูก Foreign Key ของตารางอื่นอ้างอิงอยู่ ลบตารางลูกก่อน หรือกดปุ่ม “ลบตาราง” (ระบบจะลบตารางที่อ้างอิงให้ด้วย)';
+    if (/duplicate key name/i.test(m)) return 'มี Index ชื่อนี้อยู่แล้ว (MySQL ลบ Index ที่ Foreign Key ใช้อยู่ไม่ได้) ข้ามขั้นตอนนี้ได้เลย หรือกด “สร้างฐานข้อมูลครบชุด” เพื่อสร้างใหม่ทั้งหมด';
+    if (/already exists/i.test(m)) return 'มีตารางหรือออบเจกต์ชื่อนี้อยู่แล้ว กดปุ่ม “ลบตาราง …” ของขั้นตอนนี้เพื่อลบแล้วสร้างใหม่ หรือกด “เริ่มจากฐานข้อมูลว่าง” / “สร้างฐานข้อมูลครบชุด” เพื่อรีเซ็ตทั้งหมด';
+    if (/duplicate column/i.test(m)) return 'มีคอลัมน์นี้อยู่แล้ว (เคยรันขั้นตอนนี้ไปแล้ว) กด “สร้างฐานข้อมูลครบชุด” เพื่อรีเซ็ต';
+    if (/no such table|no such column|doesn't exist|unknown column|unknown table/i.test(m)) return 'ยังไม่มีตารางหรือคอลัมน์นี้ ตรวจชื่อ หรือรันขั้นตอนสร้างตาราง (DDL) ตามลำดับก่อน';
+    if (/FOREIGN KEY constraint/i.test(m)) return 'ละเมิด Referential Integrity: ค่า Foreign Key ต้องมีอยู่จริงใน Primary Key ของตารางที่อ้างอิง และห้ามลบแถวที่ยังมีตารางอื่นอ้างถึง';
+    if (/NOT NULL constraint|cannot be null/i.test(m)) return 'ละเมิด Constraints on Null Values: คอลัมน์นี้กำหนดเป็น NOT NULL';
+    if (/UNIQUE constraint|duplicate entry/i.test(m)) return 'ละเมิด Key Constraint: ค่า Primary Key หรือ UNIQUE ต้องไม่ซ้ำกัน';
+    if (/CHECK constraint/i.test(m)) return 'ละเมิด Domain Constraint: ค่าอยู่นอกเงื่อนไขที่กำหนดไว้ด้วย CHECK';
+    if (/gone away|lost connection/i.test(m)) return 'การเชื่อมต่อ MySQL หลุด กด “เชื่อมต่อ MySQL” ใหม่อีกครั้ง';
+    return '';
+  }
 
 function judge(step, res) {
   var exp = step.expect || 'ok';
@@ -385,7 +410,6 @@ function fmtMs(ms) { return ms < 1 ? '<1 ms' : Math.round(ms) + ' ms'; }
   var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
 
   var ENGINE_URLS = ["/engine.js"];
-  var ENGINE_NOTE = "บนเครื่องของคุณผ่าน Python ไม่ต้องต่ออินเทอร์เน็ต ใช้ SQL มาตรฐานตามที่เรียนในวิชา";
   var STEPS = JSON.parse($('#steps-data').textContent);
   var SCOPES = JSON.parse($('#scopes-data').textContent);
   var GROUPS = [
@@ -405,7 +429,7 @@ function fmtMs(ms) { return ms < 1 ? '<1 ms' : Math.round(ms) + ' ms'; }
   STEPS.forEach(function (s) { byId[s.id] = s; });
   byId.free = FREE;
 
-  var state = { SQL: null, db: null, ready: false, current: 'e01', status: {}, results: {}, drafts: {}, tab: 'run' };
+  var state = { SQL: null, db: null, engine: 'sqlite', ready: false, current: 'e01', status: {}, results: {}, drafts: {}, tab: 'run' };
   var sqlEl = $('#sql');
   var resultEl = $('#result');
 
@@ -452,9 +476,14 @@ function fmtMs(ms) { return ms < 1 ? '<1 ms' : Math.round(ms) + ' ms'; }
     });
   }
   function createDb() {
-    var db = new state.SQL.Database();
-    db.run('PRAGMA foreign_keys = ON;');
-    return db;
+    return new state.SQL.Database({ engine: 'sqlite' });
+  }
+  /* SQLite: brand-new in-memory database. MySQL: drop every table/view in the connected database. */
+  function freshDb() {
+    if (state.engine === 'mysql' && state.db) { state.db.reset(); return; }
+    var old = state.db;
+    state.db = createDb();
+    if (old) old.close();
   }
   function execute(sql) {
     var t0 = performance.now();
@@ -466,10 +495,9 @@ function fmtMs(ms) { return ms < 1 ? '<1 ms' : Math.round(ms) + ' ms'; }
       return { ok: false, error: String(e && e.message ? e.message : e), ms: performance.now() - t0 };
     }
   }
-  function q(sql) { var r = state.db.exec(sql); return r.length ? r[0].values : []; }
 
   function buildAll() {
-    state.db = createDb();
+    freshDb();
     state.status = {}; state.results = {};
     STEPS.forEach(function (s) {
       if (s.group !== 'setup' && s.group !== 'data') return;
@@ -478,7 +506,7 @@ function fmtMs(ms) { return ms < 1 ? '<1 ms' : Math.round(ms) + ' ms'; }
     });
   }
   function buildEmpty() {
-    state.db = createDb();
+    freshDb();
     state.status = {}; state.results = {};
   }
 
@@ -522,33 +550,13 @@ function fmtMs(ms) { return ms < 1 ? '<1 ms' : Math.round(ms) + ' ms'; }
     });
   }
 
-  function updateCriteria() {
-    var t = { easy: 0, medium: 0, complex: 0 };
-    ['easy', 'medium', 'complex'].forEach(function (g) {
-      var list = stepsIn(g);
-      var pass = list.filter(function (s) { return state.status[s.id] && isPass(state.status[s.id].v); }).length;
-      t[g] = pass + '/' + list.length;
-    });
-    $('#c4').innerHTML = 'ง่าย <strong>' + t.easy + '</strong> · ปานกลาง <strong>' + t.medium + '</strong> · ซับซ้อน <strong>' + t.complex + '</strong> คำสั่งที่ผ่าน';
-    if (!state.db) return;
-    try {
-      var ver = q('select sqlite_version()')[0][0];
-      var tables = q("select name from sqlite_master where type='table' and name not like 'sqlite_%' order by rowid").map(function (r) { return r[0]; });
-      var views = q("select count(*) from sqlite_master where type='view'")[0][0];
-      var idx = q("select count(*) from sqlite_master where type='index' and name not like 'sqlite_%'")[0][0];
-      var fks = 0;
-      try { fks = q("select count(*) from sqlite_master m, pragma_foreign_key_list(m.name) f where m.type='table'")[0][0]; } catch (e) { fks = 0; }
-      var rows = 0;
-      tables.forEach(function (n) { rows += q('select count(*) from "' + n + '"')[0][0]; });
-      $('#c1').innerHTML = 'SQLite <strong>' + esc(ver) + '</strong> ' + esc(ENGINE_NOTE);
-      if (tables.length) {
-        $('#c2').innerHTML = '<strong>' + tables.length + '</strong> ตาราง · <strong>' + fks + '</strong> Foreign Key · <strong>' + views + '</strong> view · <strong>' + idx + '</strong> index';
-        $('#c3').innerHTML = '<strong>' + rows + '</strong> แถว ใน ' + tables.length + ' ตาราง ข้อมูลทั้งหมดเป็นข้อมูลสมมติ';
-      } else {
-        $('#c2').textContent = 'ยังไม่มีตาราง เริ่มจากขั้นตอนที่ 1 ของกลุ่มสร้างฐานข้อมูล';
-        $('#c3').textContent = 'ยังไม่มีข้อมูล';
-      }
-    } catch (e) { /* criteria text is informative only */ }
+  function updateEngineInfo() {
+    var el = $('#engineInfo');
+    if (!el) return;
+    if (!state.db) { el.textContent = 'กำลังเตรียมฐานข้อมูล…'; return; }
+    el.textContent = state.db.engine === 'mysql'
+      ? 'MySQL ' + state.db.version + ' · ' + state.db.database
+      : 'SQLite ' + state.db.version + ' · ในหน่วยความจำ';
   }
 
   function tableHtml(set) {
@@ -637,6 +645,9 @@ function fmtMs(ms) { return ms < 1 ? '<1 ms' : Math.round(ms) + ' ms'; }
     sqlEl.value = state.drafts[id] !== undefined ? state.drafts[id] : s.sql;
     autosize();
     resultEl.innerHTML = state.results[id] || placeholderHtml(s);
+    var dt = dropTargetsOf(s), bd = $('#btnDrop');
+    bd.hidden = !dt.length;
+    if (dt.length) { bd.textContent = '🗑 ' + dropLabel(dt); bd.title = 'ลบสิ่งที่ขั้นตอนนี้สร้างไว้ เพื่อรันขั้นตอนนี้ใหม่ได้'; }
     $('#btnGroup').hidden = s.group === 'free';
     if (s.group !== 'free') $('#btnGroup').textContent = 'รันทั้งกลุ่ม (' + list.length + ')';
     var idx = flatIndex(id);
@@ -652,7 +663,7 @@ function fmtMs(ms) { return ms < 1 ? '<1 ms' : Math.round(ms) + ' ms'; }
 
   function afterChange() {
     updateNav();
-    updateCriteria();
+    updateEngineInfo();
     if (state.tab === 'schema') renderSchema();
   }
 
@@ -699,28 +710,77 @@ function fmtMs(ms) { return ms < 1 ? '<1 ms' : Math.round(ms) + ' ms'; }
   function renderSchema() {
     var host = $('#schemaHost');
     if (!state.db) { host.innerHTML = '<p class="placeholder">กำลังเตรียมฐานข้อมูล…</p>'; return; }
-    var objs = q("select name, type from sqlite_master where type in ('table','view') and name not like 'sqlite_%' order by (type='view'), rowid");
+    var objs;
+    try { objs = state.db.schema(); } catch (e) { host.innerHTML = '<p class="placeholder">' + esc(e.message) + '</p>'; return; }
     if (!objs.length) { host.innerHTML = '<p class="placeholder">ยังไม่มีตารางในฐานข้อมูล เริ่มจากขั้นตอนที่ 1 ของกลุ่มสร้างฐานข้อมูล</p>'; return; }
     var h = '';
     objs.forEach(function (o) {
-      var name = o[0], type = o[1];
-      var cols = state.db.exec('PRAGMA table_info("' + name + '")');
-      cols = cols.length ? cols[0].values : [];
-      var fkr = state.db.exec('PRAGMA foreign_key_list("' + name + '")');
-      var fkMap = {};
-      if (fkr.length) fkr[0].values.forEach(function (r) { fkMap[r[3]] = r[2] + '.' + r[4]; });
-      var n = q('select count(*) from "' + name + '"')[0][0];
-      h += '<article class="tcard"><header><h3>' + esc(name) + '</h3><span class="cnt">' + (type === 'view' ? 'view · ' : '') + n + ' แถว</span></header><ul class="cols">';
-      cols.forEach(function (c) {
-        var b = '';
-        if (c[5]) b += '<span class="bd pk">PK</span>';
-        if (fkMap[c[1]]) b += '<span class="bd fk" title="อ้างอิง ' + esc(fkMap[c[1]]) + '">FK → ' + esc(fkMap[c[1]].split('.')[0]) + '</span>';
-        if (c[3] && !c[5]) b += '<span class="bd">NOT NULL</span>';
-        h += '<li><span class="cn">' + esc(c[1]) + '</span><span class="ct">' + esc(c[2] || '') + '</span><span class="cb">' + b + '</span></li>';
+      var isView = o.type === 'view';
+      h += '<article class="tcard"><header><h3>' + esc(o.name) + '</h3><span class="cnt">' + (isView ? 'view · ' : '') + o.rows + ' แถว</span></header><ul class="cols">';
+      o.columns.forEach(function (c) {
+        var b = '', ref = o.fks[c.name];
+        if (c.pk) b += '<span class="bd pk">PK</span>';
+        if (ref) b += '<span class="bd fk" title="อ้างอิง ' + esc(ref) + '">FK → ' + esc(ref.split('.')[0]) + '</span>';
+        if (c.notnull && !c.pk) b += '<span class="bd">NOT NULL</span>';
+        h += '<li><span class="cn">' + esc(c.name) + '</span><span class="ct">' + esc(c.type) + '</span><span class="cb">' + b + '</span></li>';
       });
-      h += '</ul><div><button class="btn small" type="button" data-view="' + esc(name) + '">ดูข้อมูล</button></div></article>';
+      h += '</ul><div class="cardact"><button class="btn small" type="button" data-view="' + esc(o.name) + '">ดูข้อมูล</button>'
+        + '<button class="btn small danger" type="button" data-drop="' + esc(o.name) + '" data-type="' + o.type + '">' + (isView ? 'ลบ view' : 'ลบตาราง') + '</button></div></article>';
     });
     host.innerHTML = h;
+  }
+
+  /* ---------- drop / reset one object ---------- */
+  function dropTargetsOf(s) {
+    if (!s || s.group !== 'setup') return [];
+    var sql = (s.sql || '').replace(/--[^\n]*/g, ''), out = [], m;
+    var re = /CREATE\s+(TABLE|VIEW)\s+(?:IF\s+NOT\s+EXISTS\s+)?[`"]?(\w+)/gi;
+    while ((m = re.exec(sql)) !== null) out.push({ type: m[1].toLowerCase(), name: m[2] });
+    var re2 = /CREATE\s+(?:UNIQUE\s+)?INDEX\s+[`"]?(\w+)/gi;
+    while ((m = re2.exec(sql)) !== null) out.push({ type: 'index', name: m[1] });
+    return out;
+  }
+  function dropLabel(t) {
+    if (t.length === 1) return (t[0].type === 'table' ? 'ลบตาราง ' : t[0].type === 'view' ? 'ลบ View ' : 'ลบ Index ') + t[0].name;
+    return 'ลบ Index ทั้ง ' + t.length + ' รายการ';
+  }
+  function touchedNames(s) {
+    var sql = (s.sql || '').replace(/--[^\n]*/g, ''), set = {}, m;
+    var re = /(?:CREATE\s+(?:UNIQUE\s+)?(?:TABLE|VIEW|INDEX)\s+(?:IF\s+NOT\s+EXISTS\s+)?|INSERT\s+INTO\s+)[`"]?(\w+)/gi;
+    while ((m = re.exec(sql)) !== null) set[m[1].toLowerCase()] = 1;
+    var re2 = /CREATE\s+(?:UNIQUE\s+)?INDEX\s+[`"]?\w+[`"]?\s+ON\s+[`"]?(\w+)/gi;
+    while ((m = re2.exec(sql)) !== null) set[m[1].toLowerCase()] = 1;
+    return set;
+  }
+  function dropObjects(targets) {
+    if (!state.ready || !state.db) return;
+    var plan;
+    try { plan = state.db.drop(targets, true); } catch (e) { toast('ลบไม่สำเร็จ: ' + e.message); return; }
+    if (!plan.length) { toast('ไม่พบ ' + targets.map(function (t) { return t.name; }).join(', ') + ' ในฐานข้อมูล (ยังไม่ได้สร้าง หรือถูกลบไปแล้ว)'); return; }
+    var asked = {};
+    targets.forEach(function (t) { asked[t.name.toLowerCase()] = 1; });
+    var extra = plan.filter(function (p) { return !asked[p.name.toLowerCase()]; });
+    if (extra.length && !window.confirm('การลบนี้จะลบออบเจกต์ที่อ้างอิงอยู่ด้วย:\n- ' + extra.map(function (p) { return p.name; }).join('\n- ') + '\n\nต้องการดำเนินการต่อหรือไม่?')) return;
+    var done;
+    try { done = state.db.drop(targets, false); } catch (e) {
+      var msg = String(e && e.message ? e.message : e);
+      toast('ลบไม่สำเร็จ: ' + msg);
+      if (state.tab === 'run') resultEl.innerHTML = '<div class="banner bad"><span class="lead">✕ ลบไม่สำเร็จ</span><code>' + esc(msg) + '</code>' + (hintFor(msg) ? '<span class="hint">' + esc(hintFor(msg)) + '</span>' : '') + '</div>';
+      afterChange();
+      return;
+    }
+    var gone = {};
+    plan.forEach(function (p) { gone[p.name.toLowerCase()] = 1; });
+    STEPS.forEach(function (st) {
+      if (st.group !== 'setup' && st.group !== 'data') return;
+      var t = touchedNames(st), hit = false;
+      Object.keys(t).forEach(function (k) { if (gone[k]) hit = true; });
+      if (hit) { delete state.status[st.id]; delete state.results[st.id]; }
+    });
+    delete state.results.free;
+    select(state.current);
+    afterChange();
+    toast('ลบแล้ว: ' + (done.length ? done : plan).map(function (p) { return p.name; }).join(', ') + (done.skipped && done.skipped.length ? ' (ข้าม Index ที่ Foreign Key ใช้อยู่: ' + done.skipped.join(', ') + ')' : ''));
   }
 
   /* ---------- script view ---------- */
@@ -775,6 +835,8 @@ function fmtMs(ms) { return ms < 1 ? '<1 ms' : Math.round(ms) + ' ms'; }
     if (b) select(b.getAttribute('data-open'));
   });
   $('#schemaHost').addEventListener('click', function (e) {
+    var d = e.target.closest('[data-drop]');
+    if (d) { dropObjects([{ type: d.getAttribute('data-type'), name: d.getAttribute('data-drop') }]); return; }
     var b = e.target.closest('[data-view]');
     if (!b || !state.ready) return;
     var name = b.getAttribute('data-view');
@@ -785,17 +847,23 @@ function fmtMs(ms) { return ms < 1 ? '<1 ms' : Math.round(ms) + ' ms'; }
     select('free', { scroll: true });
     runCurrent();
   });
+  function confirmMysqlWipe() {
+    return state.engine !== 'mysql' || window.confirm('จะลบตารางและ view ทั้งหมดในฐานข้อมูล "' + state.db.database + '" บน MySQL แล้วสร้างใหม่\n\nต้องการดำเนินการต่อหรือไม่?');
+  }
+  $('#btnDrop').addEventListener('click', function () {
+    dropObjects(dropTargetsOf(byId[state.current]));
+  });
   $('#btnBuild').addEventListener('click', function () {
-    if (!state.ready) return;
-    buildAll();
+    if (!state.ready || !confirmMysqlWipe()) return;
+    try { buildAll(); } catch (e) { toast('สร้างไม่สำเร็จ: ' + e.message); return; }
     delete state.results.free;
     select(state.current === 'free' ? 'e01' : state.current);
     afterChange();
     toast('สร้างฐานข้อมูลครบชุดใหม่แล้ว');
   });
   $('#btnEmpty').addEventListener('click', function () {
-    if (!state.ready) return;
-    buildEmpty();
+    if (!state.ready || !confirmMysqlWipe()) return;
+    try { buildEmpty(); } catch (e) { toast('ล้างไม่สำเร็จ: ' + e.message); return; }
     delete state.results.free;
     switchTab('run');
     select('d01', { scroll: true });
@@ -803,21 +871,82 @@ function fmtMs(ms) { return ms < 1 ? '<1 ms' : Math.round(ms) + ' ms'; }
     toast('เริ่มจากฐานข้อมูลว่าง รันขั้นตอนที่ 1 ได้เลย');
   });
 
+  /* ---------- engine: SQLite <-> MySQL ---------- */
+  function showConn(ok, html) {
+    var el = $('#connMsg');
+    el.className = 'banner ' + (ok ? 'ok' : 'bad');
+    el.innerHTML = '<span class="lead">' + (ok ? '✓ ' : '✕ ') + html + '</span>';
+  }
+  function loadConnPrefs() {
+    try {
+      var p = JSON.parse(localStorage.getItem('hospital_mysql_conn') || '{}');
+      if (p.host) $('#myHost').value = p.host;
+      if (p.port) $('#myPort').value = p.port;
+      if (p.user) $('#myUser').value = p.user;
+      if (p.database) $('#myDb').value = p.database;
+    } catch (e) { /* storage unavailable */ }
+  }
+  function saveConnPrefs(o) {
+    try { localStorage.setItem('hospital_mysql_conn', JSON.stringify({ host: o.host, port: o.port, user: o.user, database: o.database })); } catch (e) { /* ignore */ }
+  }
+  function connectMysql() {
+    if (!state.ready) return;
+    var opts = { engine: 'mysql', host: $('#myHost').value.trim(), port: $('#myPort').value.trim(), user: $('#myUser').value.trim(), password: $('#myPass').value, database: $('#myDb').value.trim() };
+    var el = $('#connMsg');
+    el.className = 'note';
+    el.textContent = 'กำลังเชื่อมต่อ…';
+    setTimeout(function () {
+      var db;
+      try { db = new state.SQL.Database(opts); } catch (e) { showConn(false, esc(e && e.message ? e.message : e)); return; }
+      var old = state.db;
+      state.db = db;
+      state.engine = 'mysql';
+      if (old) old.close();
+      state.status = {}; state.results = {};
+      saveConnPrefs(opts);
+      switchTab('run');
+      select(state.current);
+      afterChange();
+      showConn(true, 'เชื่อมต่อ MySQL ' + esc(db.version) + ' ฐานข้อมูล ' + esc(db.database) + ' แล้ว กด “สร้างฐานข้อมูลครบชุด” หรือรันขั้นตอนทีละขั้นได้เลย');
+      toast('เชื่อมต่อ MySQL แล้ว');
+    }, 30);
+  }
+  function useSqlite() {
+    var old = state.db;
+    state.engine = 'sqlite';
+    state.db = null;
+    buildAll();
+    if (old) old.close();
+    delete state.results.free;
+    switchTab('run');
+    select(state.current);
+    afterChange();
+    toast('กลับมาใช้ SQLite ในเครื่อง (สร้างฐานข้อมูลครบชุดให้แล้ว)');
+  }
+  $('#engineSel').addEventListener('change', function () {
+    var v = this.value;
+    $('#connbar').hidden = v !== 'mysql';
+    if (v === 'sqlite' && state.engine !== 'sqlite' && state.ready) useSqlite();
+    if (v === 'mysql' && state.engine !== 'mysql') $('#myPass').focus();
+  });
+  $('#btnConnect').addEventListener('click', connectMysql);
+  $('#connbar').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); connectMysql(); } });
+  window.addEventListener('pagehide', function () { if (state.db) state.db.close(true); });
+  loadConnPrefs();
+
   function setBusy(busy) {
-    ['btnRun', 'btnGroup', 'btnBuild', 'btnEmpty'].forEach(function (id) { $('#' + id).disabled = busy; });
+    ['btnRun', 'btnGroup', 'btnBuild', 'btnEmpty', 'btnDrop', 'btnConnect'].forEach(function (id) { $('#' + id).disabled = busy; });
   }
 
   function fatal(err) {
     resultEl.innerHTML = '<div class="banner bad"><span class="lead">✕ เปิดเอนจิน SQL ไม่สำเร็จ</span><span>' + esc(err && err.message ? err.message : err) + '</span><span class="hint">ยังคัดลอกสคริปต์ทั้งหมดได้ที่แท็บ “สคริปต์ทั้งหมด” แล้วนำไปรันในซอฟต์แวร์ฐานข้อมูลของคุณ</span></div>';
-    $('#c2').textContent = 'เปิดเอนจิน SQL ไม่สำเร็จ';
-    $('#c3').textContent = 'เปิดเอนจิน SQL ไม่สำเร็จ';
   }
 
   /* ---------- boot ---------- */
   renderNav();
   select('e01');
   updateNav();
-  updateCriteria();
+  updateEngineInfo();
   renderScript();
   loadEngine().then(function (init) { return init(); }).then(function (SQL) {
     state.SQL = SQL;
